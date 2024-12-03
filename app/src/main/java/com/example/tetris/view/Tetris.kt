@@ -3,6 +3,7 @@ package com.example.tetris.view
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,12 +23,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.tetris.model.PieceType
+import com.example.tetris.model.TetrisPiece
 import com.example.tetris.ui.theme.Black80
+import kotlin.random.Random
 
 const val BOARD_BORDER = 2f
 const val BOARD_WIDTH = 300
@@ -46,8 +51,10 @@ fun Tetris() {
             }
         })
     }
+    var piece by remember { mutableStateOf(renderNewPiece()) }
     var score by remember { mutableIntStateOf(0) }
     var level by remember { mutableIntStateOf(0) }
+    var gameOver by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -82,6 +89,25 @@ fun Tetris() {
                 .height(600.dp)
                 .border(2.dp, Color.White)
                 .background(Color.Gray)
+                .pointerInput(Unit) {
+                    detectDragGestures { _, dragAmount ->
+                        val xDirection = (dragAmount.x / BLOCK_SIZE).toInt().coerceIn(-1, 1)
+                        val yDirection = (dragAmount.y / BLOCK_SIZE).toInt().coerceIn(0, 1)
+
+                        if (!gameOver) {
+                            if (xDirection != 0) {
+                                if (movePiece(gameBoard, piece, xDirection, 0)) {
+                                    piece = piece.copy(x = piece.x + xDirection)
+                                }
+                            }
+                            if (yDirection > 0) {
+                                if (movePiece(gameBoard, piece, xDirection = 0, yDirection)) {
+                                    piece = piece.copy(y = piece.y + yDirection)
+                                }
+                            }
+                        }
+                    }
+                }
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val canvasWidth = size.width
@@ -92,7 +118,6 @@ fun Tetris() {
                 val canvasBoardWidth = (canvasWidth / blockSize).toInt()
                 val canvasBoardHeight = (canvasHeight / blockSize).toInt()
 
-                println("Block Size: $blockSize, Canvas Board Width: $canvasBoardWidth, Canvas Board Height: $canvasBoardHeight")
                 drawRect(color = Color.Black, size = Size(canvasWidth, canvasHeight))
 
                 for (x in 0 until canvasBoardWidth) {
@@ -105,13 +130,54 @@ fun Tetris() {
 
                 for (y in 0 until canvasBoardHeight) {
                     drawLine(
-                            color = Color.White,
-                            start = Offset(0f, y * blockSize),
-                            end = Offset(canvasWidth, y * blockSize)
+                        color = Color.White,
+                        start = Offset(0f, y * blockSize),
+                        end = Offset(canvasWidth, y * blockSize)
                     )
+                }
+
+                val pieceForm = piece.type.shapes[piece.rotationIndex]
+                pieceForm.forEachIndexed { i, row ->
+                    row.forEachIndexed { j, block ->
+                        if (block == 1) {
+                            drawRect(
+                                color = piece.type.color, topLeft = Offset(
+                                    (piece.x + j) * blockSize + BOARD_BORDER / 2,
+                                    (piece.y + i) * blockSize + BOARD_BORDER / 2
+                                ), size = Size(blockSize - BOARD_BORDER, blockSize - BOARD_BORDER)
+                            )
+                        }
+                    }
                 }
             }
         }
 
     }
+}
+
+private fun renderNewPiece(): TetrisPiece {
+    val pieceType = PieceType.entries[Random.nextInt(PieceType.entries.size)]
+    return TetrisPiece(type = pieceType, HORIZONTAL_BLOCKS / 2 - pieceType.shapes[0][0].size / 2, 0)
+}
+
+private fun movePiece(
+    board: Array<Array<Color>>, piece: TetrisPiece, xDirection: Int, yDirection: Int
+): Boolean {
+    piece.type.shapes[piece.rotationIndex].forEachIndexed { i, row ->
+        row.forEachIndexed { j, block ->
+            if (block == 1) {
+                val newXDirection = piece.x + j + xDirection
+                val newYDirection = piece.y + i + yDirection
+                if (
+                    newXDirection < 0 ||
+                    newXDirection >= HORIZONTAL_BLOCKS ||
+                    newYDirection >= VERTICAL_BLOCKS ||
+                    board[newXDirection][newYDirection] != Color.Black
+                ) {
+                    return false
+                }
+            }
+        }
+    }
+    return true
 }
