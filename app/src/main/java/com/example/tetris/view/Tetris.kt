@@ -1,5 +1,6 @@
 package com.example.tetris.view
 
+import android.widget.Button
 import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -10,10 +11,22 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -75,7 +88,7 @@ fun Tetris() {
     }
 
     fun restartGame() {
-        gameBoard = Array(VERTICAL_BLOCKS){Array(HORIZONTAL_BLOCKS){Color.Black} }
+        gameBoard = Array(VERTICAL_BLOCKS) { Array(HORIZONTAL_BLOCKS) { Color.Black } }
         piece = renderNewPiece()
         score = 0
         level = 1
@@ -231,14 +244,69 @@ fun Tetris() {
                         if (gameBoard[y][x] != Color.Black) {
                             drawRect(
                                 color = gameBoard[y][x],
-                                topLeft = Offset(x * blockSize + BOARD_BORDER / 2, y * blockSize + BOARD_BORDER / 2),
-                                size = Size(blockSize - BOARD_BORDER, blockSize - BOARD_BORDER)                            )
+                                topLeft = Offset(
+                                    x * blockSize + BOARD_BORDER / 2,
+                                    y * blockSize + BOARD_BORDER / 2
+                                ),
+                                size = Size(blockSize - BOARD_BORDER, blockSize - BOARD_BORDER)
+                            )
                         }
                     }
                 }
             }
         }
 
+        TetrisControls(
+            onLeft = {
+                if (movePiece(gameBoard, piece, xDirection = -1, yDirection = 0)) {
+                    piece = piece.copy(x = piece.x - 1)
+                }
+            },
+            onRight = {
+                if (movePiece(gameBoard, piece, xDirection = 1, yDirection = 0)) {
+                    piece = piece.copy(x = piece.x + 1)
+                }
+            },
+            onDown = {
+                if (movePiece(gameBoard, piece, xDirection = 0, yDirection = 1)) {
+                    piece = piece.copy(y = piece.y + 1)
+                }
+            },
+            onRotate = {
+                val newRotation = (piece.rotationIndex + 1) % piece.type.shapes.size
+                val rotated = piece.copy(rotationIndex = newRotation)
+                if (movePiece(gameBoard, rotated, 0, 0)) {
+                    piece = rotated
+                }
+            })
+    }
+}
+
+@Composable
+fun TetrisControls(
+    onLeft: () -> Unit,
+    onRight: () -> Unit,
+    onDown: () -> Unit,
+    onRotate: () -> Unit
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        Button(onClick = onLeft) {
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Left")
+        }
+        Button(onClick = onRotate) {
+            Icon(Icons.Default.Refresh, contentDescription = "Rotate")
+        }
+        Button(onClick = onDown) {
+            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Down")
+        }
+        Button(onClick = onRight) {
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Right")
+        }
     }
 }
 
